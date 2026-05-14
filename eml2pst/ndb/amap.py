@@ -20,14 +20,16 @@ AMAP_COVERAGE = AMAP_BITS * 64  # 253952 bytes per AMap page
 FIRST_AMAP_OFFSET = 0x4400
 
 
-def build_amap_page(allocated_ranges, amap_offset, file_base_offset, bid):
+def build_amap_page(allocated_ranges, amap_offset, file_base_offset):
     """Build a 512-byte AMap page.
 
     Args:
         allocated_ranges: List of (offset, size) tuples for allocated regions.
-        amap_offset: File offset of this AMap page.
+        amap_offset: File offset of this AMap page. Per MS-PST §2.2.2.7.1,
+            this value is also written into the trailer's bid field (AMap,
+            PMap, FMap, and FPMap pages carry bid == ib — they have no
+            logical BID in the BBT).
         file_base_offset: File offset that bit 0 of this AMap represents.
-        bid: Page BID for this AMap.
 
     Returns:
         512 bytes of AMap page data.
@@ -58,14 +60,17 @@ def build_amap_page(allocated_ranges, amap_offset, file_base_offset, bid):
             bit_idx = slot % 8
             bitmap[byte_idx] |= (1 << bit_idx)
 
-    # Compute CRC and build page trailer
+    # Compute CRC and build page trailer.
+    # Per [MS-PST] §2.2.2.7.1, AMap (and PMap/FMap/FPMap) page trailers
+    # store the page's absolute file offset (ib) in the bid field — not a
+    # logical page BID. wSig stays 0 per §2.2.2.7.2.1.
     crc = compute_crc(bytes(bitmap))
     trailer = struct.pack('<BB H I Q',
-                          PTTYPE_AMAP,  # ptype
-                          PTTYPE_AMAP,  # ptypeRepeat
-                          0,  # wSig
-                          crc,  # dwCRC
-                          bid)  # bid
+                          PTTYPE_AMAP,   # ptype
+                          PTTYPE_AMAP,   # ptypeRepeat
+                          0,             # wSig (literal 0 for AMap)
+                          crc,           # dwCRC
+                          amap_offset)   # bid = ib per §2.2.2.7.1
 
     page = bytes(bitmap) + trailer
     assert len(page) == 512

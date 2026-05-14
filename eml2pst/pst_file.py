@@ -446,9 +446,10 @@ class PSTFileBuilder:
 
         for i in range(num_amaps):
             amap_offset = FIRST_AMAP_OFFSET + i * AMAP_COVERAGE
-            amap_bid = self._alloc_page_bid()
+            # AMap pages have no logical BID — their trailer's bid field is
+            # the page's own file offset per [MS-PST] §2.2.2.7.1.
             page = build_amap_page(
-                allocated_ranges, amap_offset, amap_offset, amap_bid
+                allocated_ranges, amap_offset, amap_offset
             )
             free = compute_amap_free(
                 allocated_ranges, amap_offset, amap_offset

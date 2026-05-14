@@ -15,14 +15,14 @@ PAGE_SIZE = 512
 PAGE_TRAILER_SIZE = 16
 PAGE_DATA_SIZE = PAGE_SIZE - PAGE_TRAILER_SIZE  # 496 bytes
 
-# Page types
-PTTYPE_BBT = 0x80
-PTTYPE_NBT = 0x81
-PTTYPE_FMP = 0x82
-PTTYPE_FPM = 0x83
-PTTYPE_AMAP = 0x84
-PTTYPE_FMAP = 0x85
-PTTYPE_FPMAP = 0x86
+# Page types per [MS-PST] §2.2.2.7 (PAGETRAILER ptype enumeration).
+PTTYPE_BBT = 0x80    # Block B-Tree page
+PTTYPE_NBT = 0x81    # Node B-Tree page
+PTTYPE_FMAP = 0x82   # Free Map page
+PTTYPE_PMAP = 0x83   # Page Map page
+PTTYPE_AMAP = 0x84   # Allocation Map page
+PTTYPE_FPMAP = 0x85  # Free Page Map page
+PTTYPE_DLIST = 0x86  # Density List page (DList)
 
 # Entry sizes
 NBTENTRY_SIZE = 32  # Unicode NBT leaf entry
