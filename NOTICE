@@ -1,0 +1,17 @@
+eml2pst — hard fork of EDB_Explorer's eml2pst package
+======================================================
+
+Upstream source:  https://github.com/igrbtn/EDB_Explorer
+Upstream path:    eml2pst/
+Upstream commit:  7a67d6033e303e704c59ab2a74848d38c4ed43fb
+Upstream version: 1.078 (per upstream VERSION file at the snapshot SHA)
+Upstream license: MIT (per upstream README.md "# License" section)
+
+This repository contains a hard fork of the upstream `eml2pst` package,
+extracted at the commit listed above. We do not track upstream changes.
+Spec-driven divergence from upstream is intentional; see the commit log
+(and, from v0.1.0 onward, CHANGELOG.md) for the rationale behind each
+change.
+
+The MIT license terms apply to both the upstream original and to all
+modifications made in this repository. See LICENSE for the full text.
