@@ -16,16 +16,17 @@ BLOCK_TRAILER_SIZE = 16
 
 
 def block_signature(ib: int, bid: int) -> int:
-    """Compute block signature per [MS-PST] 5.5.
+    """Compute block/page signature per [MS-PST] §5.5 ComputeSig.
 
-    Implements the ComputeSig algorithm from the specification:
-    ib ^= bid; ib >>= 16; bid >>= 16; ib ^= bid; return ib & 0xFFFF
+        DWORD ComputeSig(DWORD dwIB, DWORD dwBID) {
+            dwIB ^= dwBID;
+            return WORD(WORD(dwIB >> 16) ^ WORD(dwIB));
+        }
+
+    Folds 32-bit (ib ^ bid) by XOR-ing its high and low halves into a WORD.
     """
-    ib ^= bid
-    ib >>= 16
-    bid >>= 16
-    ib ^= bid
-    return ib & 0xFFFF
+    x = (ib ^ bid) & 0xFFFFFFFF
+    return ((x >> 16) ^ (x & 0xFFFF)) & 0xFFFF
 
 
 def pack_block(data: bytes, bid: int, ib: int) -> bytes:
