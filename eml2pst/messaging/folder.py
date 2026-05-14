@@ -12,20 +12,31 @@ See [MS-PST] 2.4.4.
 from ..ltp.pc import build_pc_node
 from ..ltp.tc import build_tc_node
 from ..mapi.properties import (
-    NID_TYPE_HIERARCHY_TABLE, NID_TYPE_CONTENTS_TABLE,
+    NID_TYPE_HIERARCHY_TABLE,
+    NID_TYPE_CONTENTS_TABLE,
     NID_TYPE_ASSOC_CONTENTS_TABLE,
-    PR_DISPLAY_NAME, PR_CONTENT_COUNT, PR_CONTENT_UNREAD_COUNT,
-    PR_SUBFOLDERS, PR_CONTAINER_CLASS,
-    PR_CREATION_TIME, PR_LAST_MODIFICATION_TIME,
-    PR_SUBJECT, PR_MESSAGE_CLASS, PR_MESSAGE_FLAGS,
-    PR_MESSAGE_SIZE, PR_MESSAGE_DELIVERY_TIME,
-    PR_IMPORTANCE, PR_SENSITIVITY, PR_HASATTACH, PR_SENDER_NAME,
+    PR_DISPLAY_NAME,
+    PR_CONTENT_COUNT,
+    PR_CONTENT_UNREAD_COUNT,
+    PR_SUBFOLDERS,
+    PR_CONTAINER_CLASS,
+    PR_CREATION_TIME,
+    PR_LAST_MODIFICATION_TIME,
+    PR_SUBJECT,
+    PR_MESSAGE_CLASS,
+    PR_MESSAGE_FLAGS,
+    PR_MESSAGE_SIZE,
+    PR_MESSAGE_DELIVERY_TIME,
+    PR_IMPORTANCE,
+    PR_HASATTACH,
+    PR_SENDER_NAME,
 )
 from ..utils import filetime_now
 
 
-def build_folder_pc(display_name, content_count=0, has_subfolders=False,
-                    container_class="IPF.Note"):
+def build_folder_pc(
+    display_name, content_count=0, has_subfolders=False, container_class="IPF.Note"
+):
     """Build the folder Property Context.
 
     Returns:

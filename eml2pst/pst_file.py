@@ -7,41 +7,65 @@ a complete Unicode PST file from in-memory data.
 import struct
 from pathlib import Path
 
-from .crc import compute_crc
-from .ndb.header import build_header, pack_root, HEADER_SIZE
+from .ndb.header import build_header, pack_root
 from .ndb.block import pack_block, block_total_size, MAX_BLOCK_DATA
 from .ndb.xblock import build_xblock
 from .ndb.btree import (
-    build_btree_pages, pack_nbt_entry, pack_bbt_entry,
-    PTTYPE_NBT, PTTYPE_BBT, PAGE_SIZE,
+    build_btree_pages,
+    pack_nbt_entry,
+    pack_bbt_entry,
+    PTTYPE_NBT,
+    PTTYPE_BBT,
+    PAGE_SIZE,
 )
-from .ndb.amap import build_amap_page, FIRST_AMAP_OFFSET, AMAP_COVERAGE, compute_amap_free
+from .ndb.amap import (
+    build_amap_page,
+    FIRST_AMAP_OFFSET,
+    AMAP_COVERAGE,
+    compute_amap_free,
+)
 from .ndb.subnode import build_sl_block
 from .messaging.store import build_message_store, build_name_to_id_map
 from .messaging.folder import (
-    build_folder_pc, build_hierarchy_tc, build_contents_tc,
-    build_assoc_contents_tc, folder_nid_hierarchy,
-    folder_nid_contents, folder_nid_assoc,
+    build_folder_pc,
+    build_hierarchy_tc,
+    build_contents_tc,
+    build_assoc_contents_tc,
+    folder_nid_hierarchy,
+    folder_nid_contents,
+    folder_nid_assoc,
 )
 from .messaging.message import (
-    build_message_pc, build_recipients_tc, build_attachments_tc,
-    build_attachment_pc, attachment_subnode_nid,
-    message_nid_recipients, message_nid_attachments,
+    build_message_pc,
+    build_recipients_tc,
+    build_attachments_tc,
+    build_attachment_pc,
+    attachment_subnode_nid,
+    message_nid_recipients,
+    message_nid_attachments,
 )
 from .mapi.properties import (
-    NID_MESSAGE_STORE, NID_NAME_TO_ID_MAP, NID_ROOT_FOLDER,
-    NID_TYPE_NORMAL_FOLDER, NID_TYPE_NORMAL_MESSAGE,
-    NID_TYPE_INTERNAL,
-    PR_DISPLAY_NAME, PR_CONTENT_COUNT, PR_CONTENT_UNREAD_COUNT,
+    NID_MESSAGE_STORE,
+    NID_NAME_TO_ID_MAP,
+    NID_ROOT_FOLDER,
+    NID_TYPE_NORMAL_FOLDER,
+    NID_TYPE_NORMAL_MESSAGE,
+    PR_DISPLAY_NAME,
+    PR_CONTENT_COUNT,
+    PR_CONTENT_UNREAD_COUNT,
     PR_SUBFOLDERS,
-    PR_SUBJECT, PR_MESSAGE_CLASS, PR_MESSAGE_FLAGS,
-    PR_MESSAGE_SIZE, PR_MESSAGE_DELIVERY_TIME,
-    PR_IMPORTANCE, PR_HASATTACH, PR_SENDER_NAME,
-    PR_SENSITIVITY,
-    MSGFLAG_READ, MSGFLAG_HASATTACH,
+    PR_SUBJECT,
+    PR_MESSAGE_CLASS,
+    PR_MESSAGE_FLAGS,
+    PR_MESSAGE_SIZE,
+    PR_MESSAGE_DELIVERY_TIME,
+    PR_IMPORTANCE,
+    PR_HASATTACH,
+    PR_SENDER_NAME,
+    MSGFLAG_READ,
+    MSGFLAG_HASATTACH,
     make_nid,
 )
-from .ltp.pc import build_pc_node
 
 
 def _skip_amap_pages(offset, size):
@@ -90,10 +114,10 @@ class PSTFileBuilder:
         self._root_nid = NID_ROOT_FOLDER
         # Pre-initialize root folder so add_folder() can register subfolders
         self._folders[self._root_nid] = {
-            'name': 'Top of Personal Folders',
-            'parent_nid': self._root_nid,  # Root folder is self-referential
-            'subfolder_nids': [],
-            'message_nids': [],
+            "name": "Top of Personal Folders",
+            "parent_nid": self._root_nid,  # Root folder is self-referential
+            "subfolder_nids": [],
+            "message_nids": [],
         }
 
     def _alloc_data_bid(self):
@@ -160,7 +184,7 @@ class PSTFileBuilder:
             chunk_size = (MAX_BLOCK_DATA // align) * align
         bids = []
         for i in range(0, len(data), chunk_size):
-            bids.append(self._store_data_block(data[i:i + chunk_size]))
+            bids.append(self._store_data_block(data[i : i + chunk_size]))
         return self._store_internal_block(build_xblock(bids, len(data)))
 
     def _build_sl_bid(self, sl_entries):
@@ -178,7 +202,9 @@ class PSTFileBuilder:
             for sn_tuple in subnodes:
                 sn_nid, sn_data = sn_tuple[0], sn_tuple[1]
                 sn_align = sn_tuple[2] if len(sn_tuple) > 2 else 0
-                sl.append((sn_nid, self._store_subnode_data(sn_data, align=sn_align), 0))
+                sl.append(
+                    (sn_nid, self._store_subnode_data(sn_data, align=sn_align), 0)
+                )
             sub_bid = self._build_sl_bid(sl)
         return data_bid, sub_bid
 
@@ -222,15 +248,15 @@ class PSTFileBuilder:
         folder_nid = self._alloc_nid(NID_TYPE_NORMAL_FOLDER)
 
         self._folders[folder_nid] = {
-            'name': name,
-            'parent_nid': parent_nid,
-            'subfolder_nids': [],
-            'message_nids': [],
+            "name": name,
+            "parent_nid": parent_nid,
+            "subfolder_nids": [],
+            "message_nids": [],
         }
 
         # Register as subfolder of parent
         if parent_nid in self._folders:
-            self._folders[parent_nid]['subfolder_nids'].append(folder_nid)
+            self._folders[parent_nid]["subfolder_nids"].append(folder_nid)
 
         return folder_nid
 
@@ -247,7 +273,7 @@ class PSTFileBuilder:
         msg_nid = self._alloc_nid(NID_TYPE_NORMAL_MESSAGE)
 
         if folder_nid in self._folders:
-            self._folders[folder_nid]['message_nids'].append(msg_nid)
+            self._folders[folder_nid]["message_nids"].append(msg_nid)
 
         # Store parsed EML for Contents TC row building
         self._messages[msg_nid] = parsed_eml
@@ -258,35 +284,46 @@ class PSTFileBuilder:
         # Build SL entries for recipients/attachments TCs
         extra_sl = []
 
-        if parsed_eml.get('recipients'):
-            recip_pages, recip_subnodes = build_recipients_tc(parsed_eml['recipients'])
+        if parsed_eml.get("recipients"):
+            recip_pages, recip_subnodes = build_recipients_tc(parsed_eml["recipients"])
             recip_bid, recip_sub_bid = self._store_tc_or_pc(recip_pages, recip_subnodes)
             recip_nid = message_nid_recipients(msg_nid)
             extra_sl.append((recip_nid, recip_bid, recip_sub_bid))
 
-        if parsed_eml.get('attachments'):
-            attach_pages, attach_subnodes = build_attachments_tc(parsed_eml['attachments'])
-            attach_bid, attach_sub_bid = self._store_tc_or_pc(attach_pages, attach_subnodes)
+        if parsed_eml.get("attachments"):
+            attach_pages, attach_subnodes = build_attachments_tc(
+                parsed_eml["attachments"]
+            )
+            attach_bid, attach_sub_bid = self._store_tc_or_pc(
+                attach_pages, attach_subnodes
+            )
             attach_nid = message_nid_attachments(msg_nid)
             extra_sl.append((attach_nid, attach_bid, attach_sub_bid))
 
             # Per [MS-PST] 2.4.6.2: each attachment gets its own subnode PC
-            for i, att in enumerate(parsed_eml['attachments']):
+            for i, att in enumerate(parsed_eml["attachments"]):
                 att_pages, att_subnodes = build_attachment_pc(att, i)
                 att_bid, att_sub_bid = self._store_tc_or_pc(att_pages, att_subnodes)
                 att_nid = attachment_subnode_nid(i)
                 extra_sl.append((att_nid, att_bid, att_sub_bid))
 
         # Add message node with PC pages, subnodes, and extra SL entries
-        self._add_node(msg_nid, msg_pages, msg_subnodes,
-                       extra_sl_entries=extra_sl, parent_nid=folder_nid)
+        self._add_node(
+            msg_nid,
+            msg_pages,
+            msg_subnodes,
+            extra_sl_entries=extra_sl,
+            parent_nid=folder_nid,
+        )
 
         return msg_nid
 
     def _build_internal_nodes(self):
         """Build the required internal nodes (store, root folder, name map)."""
         # 1. Message Store (NID 0x21)
-        (store_pages, store_subnodes), self._record_key = build_message_store(self.display_name)
+        (store_pages, store_subnodes), self._record_key = build_message_store(
+            self.display_name
+        )
         self._add_node(NID_MESSAGE_STORE, store_pages, store_subnodes)
 
         # 2. Name-to-ID Map (NID 0x61) — required structure with GUID/entry/string streams
@@ -296,12 +333,12 @@ class PSTFileBuilder:
     def _build_folder_nodes(self):
         """Build all folder nodes (PC + 3 TCs as separate top-level NBT entries)."""
         for folder_nid, finfo in self._folders.items():
-            has_subs = len(finfo['subfolder_nids']) > 0
-            msg_count = len(finfo['message_nids'])
+            has_subs = len(finfo["subfolder_nids"]) > 0
+            msg_count = len(finfo["message_nids"])
 
             # Folder PC (returns (pages, subnodes))
             pc_pages, pc_subnodes = build_folder_pc(
-                finfo['name'],
+                finfo["name"],
                 content_count=msg_count,
                 has_subfolders=has_subs,
             )
@@ -309,43 +346,46 @@ class PSTFileBuilder:
             # Build the 3 TC data blocks (separate top-level NBT entries)
             # Hierarchy TC (subfolder list)
             sub_rows = []
-            for sub_nid in finfo['subfolder_nids']:
+            for sub_nid in finfo["subfolder_nids"]:
                 sub_info = self._folders.get(sub_nid, {})
-                sub_rows.append({
-                    '_nid': sub_nid,
-                    PR_DISPLAY_NAME: sub_info.get('name', ''),
-                    PR_CONTENT_COUNT: len(sub_info.get('message_nids', [])),
-                    PR_CONTENT_UNREAD_COUNT: 0,
-                    PR_SUBFOLDERS: len(sub_info.get('subfolder_nids', [])) > 0,
-                })
+                sub_rows.append(
+                    {
+                        "_nid": sub_nid,
+                        PR_DISPLAY_NAME: sub_info.get("name", ""),
+                        PR_CONTENT_COUNT: len(sub_info.get("message_nids", [])),
+                        PR_CONTENT_UNREAD_COUNT: 0,
+                        PR_SUBFOLDERS: len(sub_info.get("subfolder_nids", [])) > 0,
+                    }
+                )
             hier_nid = folder_nid_hierarchy(folder_nid)
             hier_pages, hier_subnodes = build_hierarchy_tc(sub_rows)
             hier_bid, hier_sub_bid = self._store_tc_or_pc(hier_pages, hier_subnodes)
 
             # Contents TC (message list)
             msg_rows = []
-            for msg_nid in finfo['message_nids']:
+            for msg_nid in finfo["message_nids"]:
                 parsed = self._messages.get(msg_nid, {})
                 flags = MSGFLAG_READ
-                if parsed.get('has_attachments', False):
+                if parsed.get("has_attachments", False):
                     flags |= MSGFLAG_HASATTACH
                 row = {
-                    '_nid': msg_nid,
-                    PR_SUBJECT: parsed.get('subject', ''),
-                    PR_MESSAGE_CLASS: parsed.get('message_class', 'IPM.Note'),
+                    "_nid": msg_nid,
+                    PR_SUBJECT: parsed.get("subject", ""),
+                    PR_MESSAGE_CLASS: parsed.get("message_class", "IPM.Note"),
                     PR_MESSAGE_FLAGS: flags,
-                    PR_MESSAGE_SIZE: parsed.get('message_size', 0),
-                    PR_IMPORTANCE: parsed.get('importance', 1),
-                    PR_HASATTACH: parsed.get('has_attachments', False),
-                    PR_SENDER_NAME: parsed.get('sender_name', ''),
+                    PR_MESSAGE_SIZE: parsed.get("message_size", 0),
+                    PR_IMPORTANCE: parsed.get("importance", 1),
+                    PR_HASATTACH: parsed.get("has_attachments", False),
+                    PR_SENDER_NAME: parsed.get("sender_name", ""),
                 }
-                if parsed.get('delivery_time'):
-                    row[PR_MESSAGE_DELIVERY_TIME] = parsed['delivery_time']
+                if parsed.get("delivery_time"):
+                    row[PR_MESSAGE_DELIVERY_TIME] = parsed["delivery_time"]
                 msg_rows.append(row)
             contents_nid = folder_nid_contents(folder_nid)
             contents_pages, contents_subnodes = build_contents_tc(msg_rows)
             contents_bid, contents_sub_bid = self._store_tc_or_pc(
-                contents_pages, contents_subnodes)
+                contents_pages, contents_subnodes
+            )
 
             # Associated Contents TC (empty)
             assoc_nid = folder_nid_assoc(folder_nid)
@@ -353,8 +393,9 @@ class PSTFileBuilder:
             assoc_bid, assoc_sub_bid = self._store_tc_or_pc(assoc_pages, assoc_subnodes)
 
             # Add folder PC node
-            self._add_node(folder_nid, pc_pages, pc_subnodes,
-                           parent_nid=finfo['parent_nid'])
+            self._add_node(
+                folder_nid, pc_pages, pc_subnodes, parent_nid=finfo["parent_nid"]
+            )
 
             # Add 3 TC nodes as separate top-level NBT entries (as Outlook does)
             self._nodes.append((hier_nid, hier_bid, hier_sub_bid, 0))
@@ -393,7 +434,7 @@ class PSTFileBuilder:
         for nid, data_bid, sub_bid, parent_nid in self._nodes:
             entry = pack_nbt_entry(nid, data_bid, sub_bid, parent_nid)
             nbt_entries.append(entry)
-        nbt_entries.sort(key=lambda e: struct.unpack('<Q', e[:8])[0])
+        nbt_entries.sort(key=lambda e: struct.unpack("<Q", e[:8])[0])
 
         # Phase 3: Build BBT entries
         bbt_entries = []
@@ -402,7 +443,7 @@ class PSTFileBuilder:
                 offset, raw_size = block_positions[bid]
                 entry = pack_bbt_entry(bid, offset, raw_size)
                 bbt_entries.append(entry)
-        bbt_entries.sort(key=lambda e: struct.unpack('<Q', e[:8])[0])
+        bbt_entries.sort(key=lambda e: struct.unpack("<Q", e[:8])[0])
 
         # Phase 4: Build B-tree pages (potentially multi-level)
         page_offset_cursor = [current_offset]  # mutable for closure
@@ -415,12 +456,10 @@ class PSTFileBuilder:
             return offset
 
         nbt_pages = build_btree_pages(
-            nbt_entries, PTTYPE_NBT,
-            self._alloc_page_bid, alloc_page_offset
+            nbt_entries, PTTYPE_NBT, self._alloc_page_bid, alloc_page_offset
         )
         bbt_pages = build_btree_pages(
-            bbt_entries, PTTYPE_BBT,
-            self._alloc_page_bid, alloc_page_offset
+            bbt_entries, PTTYPE_BBT, self._alloc_page_bid, alloc_page_offset
         )
 
         # Root pages are the last in each list
@@ -439,7 +478,9 @@ class PSTFileBuilder:
         for _, pg_offset, _ in nbt_pages + bbt_pages:
             allocated_ranges.append((pg_offset, PAGE_SIZE))
 
-        num_amaps = max(1, (file_eof - FIRST_AMAP_OFFSET + AMAP_COVERAGE - 1) // AMAP_COVERAGE)
+        num_amaps = max(
+            1, (file_eof - FIRST_AMAP_OFFSET + AMAP_COVERAGE - 1) // AMAP_COVERAGE
+        )
         amap_pages_list = []  # list of (offset, page_bytes)
         total_amap_free = 0
         last_amap_offset = FIRST_AMAP_OFFSET
@@ -448,12 +489,8 @@ class PSTFileBuilder:
             amap_offset = FIRST_AMAP_OFFSET + i * AMAP_COVERAGE
             # AMap pages have no logical BID — their trailer's bid field is
             # the page's own file offset per [MS-PST] §2.2.2.7.1.
-            page = build_amap_page(
-                allocated_ranges, amap_offset, amap_offset
-            )
-            free = compute_amap_free(
-                allocated_ranges, amap_offset, amap_offset
-            )
+            page = build_amap_page(allocated_ranges, amap_offset, amap_offset)
+            free = compute_amap_free(allocated_ranges, amap_offset, amap_offset)
             amap_pages_list.append((amap_offset, page))
             total_amap_free += free
             last_amap_offset = amap_offset
@@ -477,10 +514,10 @@ class PSTFileBuilder:
         )
 
         # Phase 7: Write all items sorted by file offset
-        with open(output_path, 'wb') as f:
+        with open(output_path, "wb") as f:
             # Header (padded to FIRST_AMAP_OFFSET)
             f.write(header)
-            f.write(b'\x00' * (FIRST_AMAP_OFFSET - len(header)))
+            f.write(b"\x00" * (FIRST_AMAP_OFFSET - len(header)))
 
             # Collect all items: (offset, data_bytes)
             write_items = []
@@ -499,7 +536,7 @@ class PSTFileBuilder:
             expected_offset = FIRST_AMAP_OFFSET
             for offset, data in write_items:
                 if offset > expected_offset:
-                    f.write(b'\x00' * (offset - expected_offset))
+                    f.write(b"\x00" * (offset - expected_offset))
                 f.write(data)
                 expected_offset = offset + len(data)
 

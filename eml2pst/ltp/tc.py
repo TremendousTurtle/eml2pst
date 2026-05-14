@@ -9,9 +9,17 @@ See [MS-PST] 2.3.4.
 import struct
 from .heap import HeapOnNode, HN_CLIENT_TC, MAX_HN_ALLOC
 from ..mapi.properties import (
-    prop_id, prop_type, is_fixed_type, fixed_size,
-    PT_LONG, PT_SHORT, PT_BOOLEAN, PT_SYSTIME, PT_UNICODE, PT_STRING8,
-    PT_BINARY, PT_LONG_LONG,
+    prop_type,
+    is_fixed_type,
+    fixed_size,
+    PT_LONG,
+    PT_SHORT,
+    PT_BOOLEAN,
+    PT_SYSTIME,
+    PT_UNICODE,
+    PT_STRING8,
+    PT_BINARY,
+    PT_LONG_LONG,
     PidTagLtpRowId,
 )
 
@@ -91,12 +99,14 @@ def build_tc_node(column_defs, rows):
     # Build complete column list:
     # First entry MUST be PidTagLtpRowId at offset 0 (describes dwRowID)
     # Then sorted user columns starting at offset 4
-    columns = [{
-        'tag': PidTagLtpRowId,
-        'ib_data': 0,
-        'cb_data': 4,
-        'i_bit': 0,
-    }]
+    columns = [
+        {
+            "tag": PidTagLtpRowId,
+            "ib_data": 0,
+            "cb_data": 4,
+            "i_bit": 0,
+        }
+    ]
 
     sorted_tags = group_4b + group_2b + group_1b + group_var
     current_offset = 4  # User columns start after dwRowID (4 bytes)
@@ -104,17 +114,19 @@ def build_tc_node(column_defs, rows):
     # Track group boundary offsets
     offset_after_4b = 4
     offset_after_2b = 4
-    offset_after_1b = 4
+    _offset_after_1b = 4  # computed but not used in rgib (upstream latent gap)
 
     for i, tag in enumerate(sorted_tags):
         ptype = prop_type(tag)
         cb = _column_storage_size(ptype)
-        columns.append({
-            'tag': tag,
-            'ib_data': current_offset,
-            'cb_data': cb,
-            'i_bit': i + 1,  # +1 because iBit 0 is PidTagLtpRowId
-        })
+        columns.append(
+            {
+                "tag": tag,
+                "ib_data": current_offset,
+                "cb_data": cb,
+                "i_bit": i + 1,  # +1 because iBit 0 is PidTagLtpRowId
+            }
+        )
         current_offset += cb
 
         if i < len(group_4b):
@@ -122,13 +134,13 @@ def build_tc_node(column_defs, rows):
         elif i < len(group_4b) + len(group_2b):
             offset_after_2b = current_offset
         elif i < len(group_4b) + len(group_2b) + len(group_1b):
-            offset_after_1b = current_offset
+            _offset_after_1b = current_offset  # see line 117 — upstream latent gap
 
     # If a group is empty, its boundary equals the previous group's boundary
     if not group_2b:
         offset_after_2b = offset_after_4b
     if not group_1b:
-        offset_after_1b = offset_after_2b
+        _offset_after_1b = offset_after_2b  # see line 117 — upstream latent gap
 
     # rgib boundaries per [MS-PST] 2.3.4.2:
     # rgib[TCI_4b] = start of >=4-byte fixed group (always 0 — includes dwRowID)
@@ -144,69 +156,71 @@ def build_tc_node(column_defs, rows):
     row_size = rgib_3
 
     # Build TCOLDESC array (PidTagLtpRowId first, then user columns)
-    coldesc_data = b''
+    coldesc_data = b""
     for col in columns:
-        coldesc_data += struct.pack('<I H BB',
-                                    col['tag'],
-                                    col['ib_data'],
-                                    col['cb_data'],
-                                    col['i_bit'])
+        coldesc_data += struct.pack(
+            "<I H BB", col["tag"], col["ib_data"], col["cb_data"], col["i_bit"]
+        )
 
     # Build row data
-    all_row_data = b''
+    all_row_data = b""
     for row_idx, row in enumerate(rows):
         row_bytes = bytearray(row_size)
 
         # dwRowID at offset 0 (4 bytes) - use row index as ID
-        nid_value = row.get('_nid', row_idx)
-        struct.pack_into('<I', row_bytes, 0, nid_value)
+        nid_value = row.get("_nid", row_idx)
+        struct.pack_into("<I", row_bytes, 0, nid_value)
 
         # CEB: mark PidTagLtpRowId (iBit 0) as always present
         ceb = bytearray(ceb_size)
-        ceb[0] |= (1 << 7)  # iBit 0 → byte 0, bit 7
+        ceb[0] |= 1 << 7  # iBit 0 → byte 0, bit 7
 
         # Fill in user column values
         for col in columns[1:]:  # Skip PidTagLtpRowId (already written as dwRowID)
-            tag = col['tag']
+            tag = col["tag"]
             if tag not in row:
                 continue
 
             value = row[tag]
             ptype = prop_type(tag)
-            offset = col['ib_data']
+            offset = col["ib_data"]
 
             # Mark column as present in CEB
-            bit_idx = col['i_bit']
-            ceb[bit_idx // 8] |= (1 << (7 - (bit_idx % 8)))
+            bit_idx = col["i_bit"]
+            ceb[bit_idx // 8] |= 1 << (7 - (bit_idx % 8))
 
             if is_fixed_type(ptype):
                 if ptype == PT_LONG:
-                    struct.pack_into('<I', row_bytes, offset, value & 0xFFFFFFFF)
+                    struct.pack_into("<I", row_bytes, offset, value & 0xFFFFFFFF)
                 elif ptype == PT_SHORT:
-                    struct.pack_into('<H', row_bytes, offset, value & 0xFFFF)
+                    struct.pack_into("<H", row_bytes, offset, value & 0xFFFF)
                 elif ptype == PT_BOOLEAN:
-                    struct.pack_into('<I', row_bytes, offset, 1 if value else 0)
+                    struct.pack_into("<I", row_bytes, offset, 1 if value else 0)
                 elif ptype == PT_SYSTIME:
-                    struct.pack_into('<Q', row_bytes, offset, value)
+                    struct.pack_into("<Q", row_bytes, offset, value)
                 elif ptype == PT_LONG_LONG:
-                    struct.pack_into('<Q', row_bytes, offset, value)
+                    struct.pack_into("<Q", row_bytes, offset, value)
             else:
                 # Variable-size: allocate on heap, store HID
                 if ptype == PT_UNICODE:
-                    heap_data = value.encode('utf-16-le') if isinstance(value, str) else value
+                    heap_data = (
+                        value.encode("utf-16-le") if isinstance(value, str) else value
+                    )
                 elif ptype == PT_STRING8:
-                    heap_data = value.encode('utf-8') if isinstance(value, str) else value
+                    heap_data = (
+                        value.encode("utf-8") if isinstance(value, str) else value
+                    )
                 elif ptype == PT_BINARY:
-                    heap_data = value if isinstance(value, bytes) else b''
+                    heap_data = value if isinstance(value, bytes) else b""
                 else:
-                    heap_data = value if isinstance(value, bytes) else b''
+                    heap_data = value if isinstance(value, bytes) else b""
 
                 hid = hn.allocate(heap_data)
-                struct.pack_into('<I', row_bytes, offset, hid)
+                struct.pack_into("<I", row_bytes, offset, hid)
 
         # Write CEB at end of column data (offset = current_offset, before rgib_3 boundary)
         ceb_offset = current_offset
-        row_bytes[ceb_offset:ceb_offset + ceb_size] = ceb
+        row_bytes[ceb_offset : ceb_offset + ceb_size] = ceb
         all_row_data += bytes(row_bytes)
 
     # Allocate row data on heap, or as subnode if too large
@@ -234,14 +248,12 @@ def build_tc_node(column_defs, rows):
         # Collect (dwRowID, row_index) pairs, sorted by dwRowID
         ri_pairs = []
         for row_idx, row in enumerate(rows):
-            nid_value = row.get('_nid', row_idx)
+            nid_value = row.get("_nid", row_idx)
             ri_pairs.append((nid_value, row_idx))
         ri_pairs.sort(key=lambda x: x[0])
 
         # Pack leaf entries: key(4) + data(4) per entry
-        ri_leaf_data = b''.join(
-            struct.pack('<II', rid, ridx) for rid, ridx in ri_pairs
-        )
+        ri_leaf_data = b"".join(struct.pack("<II", rid, ridx) for rid, ridx in ri_pairs)
 
         entry_size = 8  # key(4) + data(4)
         max_per_leaf = MAX_HN_ALLOC // entry_size
@@ -254,36 +266,37 @@ def build_tc_node(column_defs, rows):
             # Per [MS-PST] 2.3.2.2: interior entries are key(cbKey) + hidChild(4)
             leaf_hids = []
             for i in range(0, len(ri_pairs), max_per_leaf):
-                chunk_pairs = ri_pairs[i:i + max_per_leaf]
-                chunk_data = b''.join(
-                    struct.pack('<II', rid, ridx) for rid, ridx in chunk_pairs
+                chunk_pairs = ri_pairs[i : i + max_per_leaf]
+                chunk_data = b"".join(
+                    struct.pack("<II", rid, ridx) for rid, ridx in chunk_pairs
                 )
                 first_key = chunk_pairs[0][0]
                 leaf_hids.append((first_key, hn.allocate(chunk_data)))
 
             # Interior node: key(4) + hidChild(4) per leaf
-            interior_data = b''.join(
-                struct.pack('<II', first_key, hid) for first_key, hid in leaf_hids
+            interior_data = b"".join(
+                struct.pack("<II", first_key, hid) for first_key, hid in leaf_hids
             )
             ri_leaf_hid = hn.allocate(interior_data)
             bth_levels = 1
 
     # BTHHEADER: bType(1)=0xB5, cbKey(1)=4, cbEnt(1)=4, bIdxLevels(1), hidRoot(4)
-    ri_bth_header = struct.pack('<BB BB I',
-                                 0xB5, 4, 4, bth_levels, ri_leaf_hid)
+    ri_bth_header = struct.pack("<BB BB I", 0xB5, 4, 4, bth_levels, ri_leaf_hid)
     row_index_hid = hn.allocate(ri_bth_header)
 
     # Build TCINFO header
-    tcinfo = struct.pack('<BB HHHH I I I',
-                         0x7C,  # bType = TC
-                         total_cols,  # cCols (includes PidTagLtpRowId)
-                         rgib_0,  # rgib[TCI_4b]
-                         rgib_1,  # rgib[TCI_2b]
-                         rgib_2,  # rgib[TCI_1b]
-                         rgib_3,  # rgib[TCI_bm]
-                         row_index_hid,  # hidRowIndex
-                         rows_hid,  # hnidRows
-                         0)  # hidIndex (deprecated)
+    tcinfo = struct.pack(
+        "<BB HHHH I I I",
+        0x7C,  # bType = TC
+        total_cols,  # cCols (includes PidTagLtpRowId)
+        rgib_0,  # rgib[TCI_4b]
+        rgib_1,  # rgib[TCI_2b]
+        rgib_2,  # rgib[TCI_1b]
+        rgib_3,  # rgib[TCI_bm]
+        row_index_hid,  # hidRowIndex
+        rows_hid,  # hnidRows
+        0,
+    )  # hidIndex (deprecated)
 
     tcinfo_data = tcinfo + coldesc_data
 

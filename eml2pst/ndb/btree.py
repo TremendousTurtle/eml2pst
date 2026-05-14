@@ -16,11 +16,11 @@ PAGE_TRAILER_SIZE = 16
 PAGE_DATA_SIZE = PAGE_SIZE - PAGE_TRAILER_SIZE  # 496 bytes
 
 # Page types per [MS-PST] §2.2.2.7 (PAGETRAILER ptype enumeration).
-PTTYPE_BBT = 0x80    # Block B-Tree page
-PTTYPE_NBT = 0x81    # Node B-Tree page
-PTTYPE_FMAP = 0x82   # Free Map page
-PTTYPE_PMAP = 0x83   # Page Map page
-PTTYPE_AMAP = 0x84   # Allocation Map page
+PTTYPE_BBT = 0x80  # Block B-Tree page
+PTTYPE_NBT = 0x81  # Node B-Tree page
+PTTYPE_FMAP = 0x82  # Free Map page
+PTTYPE_PMAP = 0x83  # Page Map page
+PTTYPE_AMAP = 0x84  # Allocation Map page
 PTTYPE_FPMAP = 0x85  # Free Page Map page
 PTTYPE_DLIST = 0x86  # Density List page (DList)
 
@@ -42,7 +42,7 @@ def pack_nbt_entry(nid, bid_data, bid_sub=0, nid_parent=0):
 
     nid(8) + bidData(8) + bidSub(8) + nidParent(4) + dwPadding(4)
     """
-    return struct.pack('<QQQ II', nid, bid_data, bid_sub, nid_parent, 0)
+    return struct.pack("<QQQ II", nid, bid_data, bid_sub, nid_parent, 0)
 
 
 def pack_bbt_entry(bid, ib, cb, c_ref=2):
@@ -50,7 +50,7 @@ def pack_bbt_entry(bid, ib, cb, c_ref=2):
 
     BREF(16: bid+ib) + cb(2) + cRef(2) + dwPadding(4)
     """
-    return struct.pack('<QQ HH I', bid, ib, cb, c_ref, 0)
+    return struct.pack("<QQ HH I", bid, ib, cb, c_ref, 0)
 
 
 def pack_bt_entry(key, bid, ib):
@@ -58,7 +58,7 @@ def pack_bt_entry(key, bid, ib):
 
     btkey(8) + BREF(16: bid + ib)
     """
-    return struct.pack('<Q QQ', key, bid, ib)
+    return struct.pack("<Q QQ", key, bid, ib)
 
 
 def build_btpage(entries, ptype, bid, ib, c_level=0):
@@ -89,17 +89,19 @@ def build_btpage(entries, ptype, bid, ib, c_level=0):
     max_entries = ENTRIES_AREA // entry_size if entry_size > 0 else 0
 
     # Build the entries area (488 bytes for data + 8 bytes metadata)
-    entries_data = b''.join(entries)
+    entries_data = b"".join(entries)
     # Pad entries to 488 bytes
-    entries_area = entries_data[:ENTRIES_AREA].ljust(ENTRIES_AREA, b'\x00')
+    entries_area = entries_data[:ENTRIES_AREA].ljust(ENTRIES_AREA, b"\x00")
 
     # Metadata: cEnt(1) + cEntMax(1) + cbEnt(1) + cLevel(1) + dwPadding(4) = 8 bytes
-    metadata = struct.pack('<BBBB I',
-                           len(entries),  # cEnt
-                           max_entries,  # cEntMax
-                           entry_size,  # cbEnt
-                           c_level,  # cLevel
-                           0)  # dwPadding
+    metadata = struct.pack(
+        "<BBBB I",
+        len(entries),  # cEnt
+        max_entries,  # cEntMax
+        entry_size,  # cbEnt
+        c_level,  # cLevel
+        0,
+    )  # dwPadding
 
     page_data = entries_area + metadata
     assert len(page_data) == 496, f"Page data is {len(page_data)} bytes, expected 496"
@@ -112,12 +114,14 @@ def build_btpage(entries, ptype, bid, ib, c_level=0):
     # trailers carry wSig = ComputeSig(ib, bid). AMap/PMap/FMap/FPMap pages
     # use a literal 0, but those are emitted by their own modules (amap.py).
     w_sig = block_signature(ib, bid)
-    trailer = struct.pack('<BB H I Q',
-                          ptype,  # ptype
-                          ptype,  # ptypeRepeat
-                          w_sig,  # wSig = ComputeSig(ib, bid)
-                          crc,  # dwCRC
-                          bid)  # bid
+    trailer = struct.pack(
+        "<BB H I Q",
+        ptype,  # ptype
+        ptype,  # ptypeRepeat
+        w_sig,  # wSig = ComputeSig(ib, bid)
+        crc,  # dwCRC
+        bid,
+    )  # bid
 
     page = page_data + trailer
     assert len(page) == 512
@@ -165,13 +169,13 @@ def build_btree_pages(entries, ptype, alloc_bid_fn, alloc_offset_fn):
         next_level_entries = []
 
         for i in range(0, len(current_entries), max_per):
-            chunk = current_entries[i:i + max_per]
+            chunk = current_entries[i : i + max_per]
             bid = alloc_bid_fn()
             offset = alloc_offset_fn(bid)
             page = build_btpage(chunk, ptype, bid, ib=offset, c_level=level)
             pages.append((bid, offset, page))
 
-            first_key = struct.unpack('<Q', chunk[0][:8])[0]
+            first_key = struct.unpack("<Q", chunk[0][:8])[0]
             next_level_entries.append(pack_bt_entry(first_key, bid, offset))
 
         level += 1

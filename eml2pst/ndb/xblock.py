@@ -25,15 +25,11 @@ def build_xblock(bid_list, total_data_bytes):
     cEnt = len(bid_list)
 
     # Header: btype(1) + cLevel(1) + cEnt(2) + lcbTotal(4) = 8 bytes
-    header = struct.pack('<BB H I',
-                         XBLOCK_BTYPE,
-                         XBLOCK_LEVEL,
-                         cEnt,
-                         total_data_bytes)
+    header = struct.pack("<BB H I", XBLOCK_BTYPE, XBLOCK_LEVEL, cEnt, total_data_bytes)
 
     # BID array: 8 bytes each
-    bid_data = b''
+    bid_data = b""
     for bid in bid_list:
-        bid_data += struct.pack('<Q', bid)
+        bid_data += struct.pack("<Q", bid)
 
     return header + bid_data

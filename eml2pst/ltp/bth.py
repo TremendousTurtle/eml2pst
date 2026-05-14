@@ -32,10 +32,12 @@ def build_bth_data(entries, key_size=2, data_size=6):
 
     if entries:
         # Build leaf record data
-        leaf_data = b''
+        leaf_data = b""
         for key, value in entries:
             assert len(key) == key_size, f"Key size mismatch: {len(key)} != {key_size}"
-            assert len(value) == data_size, f"Data size mismatch: {len(value)} != {data_size}"
+            assert len(value) == data_size, (
+                f"Data size mismatch: {len(value)} != {data_size}"
+            )
             leaf_data += key + value
 
         leaf_hid = hn.allocate(leaf_data)
@@ -44,12 +46,14 @@ def build_bth_data(entries, key_size=2, data_size=6):
 
     # BTHHEADER: cbKey(1) + cbEnt(1) + bIdxLevels(1) + hidRoot(4)
     # Actually per spec: bType(1)=0xB5 + cbKey(1) + cbEnt(1) + bIdxLevels(1) + hidRoot(4) = 8 bytes
-    bth_header = struct.pack('<BB BB I',
-                             0xB5,  # bType
-                             key_size,  # cbKey
-                             data_size,  # cbEnt
-                             0,  # bIdxLevels (0 = leaf only)
-                             leaf_hid)  # hidRoot
+    bth_header = struct.pack(
+        "<BB BB I",
+        0xB5,  # bType
+        key_size,  # cbKey
+        data_size,  # cbEnt
+        0,  # bIdxLevels (0 = leaf only)
+        leaf_hid,
+    )  # hidRoot
 
     header_hid = hn.allocate(bth_header)
     hn.set_user_root(header_hid)

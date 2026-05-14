@@ -1,7 +1,5 @@
 """MAPI property tags, types, and constants for PST files."""
 
-import struct
-
 # --- Property Types (low 2 bytes of property tag) ---
 PT_UNSPECIFIED = 0x0000
 PT_SHORT = 0x0002  # 16-bit integer
@@ -36,8 +34,7 @@ def fixed_size(prop_type):
 
 
 def is_variable_type(prop_type):
-    return prop_type in (PT_STRING8, PT_UNICODE, PT_BINARY,
-                         PT_MV_BINARY, PT_MV_UNICODE)
+    return prop_type in (PT_STRING8, PT_UNICODE, PT_BINARY, PT_MV_BINARY, PT_MV_UNICODE)
 
 
 def prop_tag(prop_id, prop_type):
@@ -145,8 +142,13 @@ STORE_UNICODE_OK = 0x00040000
 
 # Default store support mask for a writable PST
 DEFAULT_STORE_SUPPORT_MASK = (
-    STORE_ENTRYID_UNIQUE | STORE_SEARCH_OK | STORE_MODIFY_OK |
-    STORE_CREATE_OK | STORE_ATTACH_OK | STORE_OLE_OK | STORE_UNICODE_OK
+    STORE_ENTRYID_UNIQUE
+    | STORE_SEARCH_OK
+    | STORE_MODIFY_OK
+    | STORE_CREATE_OK
+    | STORE_ATTACH_OK
+    | STORE_OLE_OK
+    | STORE_UNICODE_OK
 )
 
 # Valid folder mask bits
@@ -208,8 +210,10 @@ def nid_index(nid):
 
 
 # --- LTP Internal Properties (for TC row index) ---
-PidTagLtpRowId = prop_tag(0x67F2, PT_LONG)   # Required first TCOLDESC: dwRowID at offset 0
-PidTagLtpRowVer = prop_tag(0x67F3, PT_LONG)   # Optional row version
+PidTagLtpRowId = prop_tag(
+    0x67F2, PT_LONG
+)  # Required first TCOLDESC: dwRowID at offset 0
+PidTagLtpRowVer = prop_tag(0x67F3, PT_LONG)  # Optional row version
 
 # --- Table Context Column Descriptors (for TC) ---
 # Columns for Hierarchy Table (folder's subfolder list)

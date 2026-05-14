@@ -26,17 +26,17 @@ def filetime_now() -> int:
 
 def pack_filetime(ft: int) -> bytes:
     """Pack a FILETIME as 8 bytes little-endian."""
-    return struct.pack('<Q', ft)
+    return struct.pack("<Q", ft)
 
 
 def encode_unicode(s: str) -> bytes:
     """Encode a string as UTF-16LE with null terminator (for PT_UNICODE)."""
-    return s.encode('utf-16-le') + b'\x00\x00'
+    return s.encode("utf-16-le") + b"\x00\x00"
 
 
 def encode_string8(s: str) -> bytes:
     """Encode a string as UTF-8 with null terminator (for PT_STRING8)."""
-    return s.encode('utf-8') + b'\x00'
+    return s.encode("utf-8") + b"\x00"
 
 
 def align(value: int, boundary: int) -> int:
@@ -63,4 +63,4 @@ def make_entry_id(nid: int) -> bytes:
 
     For internal references we use a simplified form.
     """
-    return struct.pack('<I', 0) + b'\x00' * 16 + struct.pack('<I', nid)
+    return struct.pack("<I", 0) + b"\x00" * 16 + struct.pack("<I", nid)

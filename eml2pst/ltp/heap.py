@@ -132,19 +132,16 @@ class HeapOnNode:
         ib_hnpm = data_start + data_area_size
 
         # HNHDR (12 bytes)
-        hnhdr = struct.pack('<H BB I I',
-                            ib_hnpm,
-                            HN_SIG,
-                            self.client_sig,
-                            self.user_root_hid,
-                            0)  # dwFill
+        hnhdr = struct.pack(
+            "<H BB I I", ib_hnpm, HN_SIG, self.client_sig, self.user_root_hid, 0
+        )  # dwFill
 
-        data_area = b''.join(allocations)
+        data_area = b"".join(allocations)
 
         # HNPAGEMAP
-        pagemap = struct.pack('<HH', num_alloc, 0)
+        pagemap = struct.pack("<HH", num_alloc, 0)
         for off in offsets:
-            pagemap += struct.pack('<H', off + data_start)
+            pagemap += struct.pack("<H", off + data_start)
 
         return hnhdr + data_area + pagemap
 
@@ -164,12 +161,12 @@ class HeapOnNode:
         ib_hnpm = data_start + data_area_size
 
         # HNPAGEHDR (2 bytes): just ibHnpm
-        header = struct.pack('<H', ib_hnpm)
+        header = struct.pack("<H", ib_hnpm)
 
-        data_area = b''.join(allocations)
+        data_area = b"".join(allocations)
 
-        pagemap = struct.pack('<HH', num_alloc, 0)
+        pagemap = struct.pack("<HH", num_alloc, 0)
         for off in offsets:
-            pagemap += struct.pack('<H', off + data_start)
+            pagemap += struct.pack("<H", off + data_start)
 
         return header + data_area + pagemap

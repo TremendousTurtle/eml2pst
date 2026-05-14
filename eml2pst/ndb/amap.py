@@ -49,7 +49,7 @@ def build_amap_page(allocated_ranges, amap_offset, file_base_offset):
             if 0 <= slot < AMAP_BITS:
                 byte_idx = slot // 8
                 bit_idx = slot % 8
-                bitmap[byte_idx] |= (1 << bit_idx)
+                bitmap[byte_idx] |= 1 << bit_idx
 
     # Mark the AMap page itself as allocated
     amap_rel = (amap_offset - file_base_offset) // 64
@@ -58,19 +58,21 @@ def build_amap_page(allocated_ranges, amap_offset, file_base_offset):
         if 0 <= slot < AMAP_BITS:
             byte_idx = slot // 8
             bit_idx = slot % 8
-            bitmap[byte_idx] |= (1 << bit_idx)
+            bitmap[byte_idx] |= 1 << bit_idx
 
     # Compute CRC and build page trailer.
     # Per [MS-PST] §2.2.2.7.1, AMap (and PMap/FMap/FPMap) page trailers
     # store the page's absolute file offset (ib) in the bid field — not a
     # logical page BID. wSig stays 0 per §2.2.2.7.2.1.
     crc = compute_crc(bytes(bitmap))
-    trailer = struct.pack('<BB H I Q',
-                          PTTYPE_AMAP,   # ptype
-                          PTTYPE_AMAP,   # ptypeRepeat
-                          0,             # wSig (literal 0 for AMap)
-                          crc,           # dwCRC
-                          amap_offset)   # bid = ib per §2.2.2.7.1
+    trailer = struct.pack(
+        "<BB H I Q",
+        PTTYPE_AMAP,  # ptype
+        PTTYPE_AMAP,  # ptypeRepeat
+        0,  # wSig (literal 0 for AMap)
+        crc,  # dwCRC
+        amap_offset,
+    )  # bid = ib per §2.2.2.7.1
 
     page = bytes(bitmap) + trailer
     assert len(page) == 512
@@ -83,7 +85,10 @@ def compute_amap_free(allocated_ranges, amap_offset, file_base_offset):
     coverage_end = file_base_offset + AMAP_COVERAGE
 
     for alloc_offset, alloc_size in allocated_ranges:
-        if alloc_offset >= coverage_end or alloc_offset + alloc_size <= file_base_offset:
+        if (
+            alloc_offset >= coverage_end
+            or alloc_offset + alloc_size <= file_base_offset
+        ):
             continue
         # Clip to coverage area
         start = max(alloc_offset, file_base_offset)

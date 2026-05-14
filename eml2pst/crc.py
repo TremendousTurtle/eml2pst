@@ -4,8 +4,6 @@ Implements the CRC algorithm specified in [MS-PST] 5.3.
 This is a standard CRC-32 with polynomial 0xEDB88320 (reflected).
 """
 
-import struct
-
 # CRC-32 lookup table (256 entries, polynomial 0xEDB88320)
 _CRC_TABLE = None
 

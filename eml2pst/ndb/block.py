@@ -52,7 +52,7 @@ def pack_block(data: bytes, bid: int, ib: int) -> bytes:
     crc = compute_crc(data)
 
     # BLOCKTRAILER: cb(2) + wSig(2) + dwCRC(4) + bid(8) = 16 bytes
-    trailer = struct.pack('<HHI Q', cb, w_sig, crc, bid)
+    trailer = struct.pack("<HHI Q", cb, w_sig, crc, bid)
 
     # Total = data + padding + trailer, aligned to 64 bytes
     # The total block size (data + trailer) is padded to 64-byte boundary
@@ -61,7 +61,7 @@ def pack_block(data: bytes, bid: int, ib: int) -> bytes:
     total_aligned = ((total_raw + BLOCK_ALIGN - 1) // BLOCK_ALIGN) * BLOCK_ALIGN
     padding_size = total_aligned - total_raw
 
-    return data + (b'\x00' * padding_size) + trailer
+    return data + (b"\x00" * padding_size) + trailer
 
 
 def block_total_size(data_len: int) -> int:

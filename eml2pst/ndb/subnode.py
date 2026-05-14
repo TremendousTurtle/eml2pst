@@ -18,7 +18,7 @@ SLENTRY_SIZE = 24
 
 def pack_sl_entry(nid, bid_data, bid_sub=0):
     """Pack a Subnode Leaf Entry (24 bytes, Unicode)."""
-    return struct.pack('<QQQ', nid, bid_data, bid_sub)
+    return struct.pack("<QQQ", nid, bid_data, bid_sub)
 
 
 def build_sl_block(entries):
@@ -31,13 +31,15 @@ def build_sl_block(entries):
         Raw bytes for the SL block data (before block packing/trailer).
     """
     # SLBLOCK header: btype(1) + cLevel(1) + cEnt(2) + dwPadding(4) = 8 bytes
-    header = struct.pack('<BB H I',
-                         SLBLOCK_TYPE,  # btype = SL
-                         0,  # cLevel = 0 (leaf)
-                         len(entries),  # cEnt
-                         0)  # dwPadding
+    header = struct.pack(
+        "<BB H I",
+        SLBLOCK_TYPE,  # btype = SL
+        0,  # cLevel = 0 (leaf)
+        len(entries),  # cEnt
+        0,
+    )  # dwPadding
 
-    entry_data = b''
+    entry_data = b""
     for nid, bid_data, bid_sub in entries:
         entry_data += pack_sl_entry(nid, bid_data, bid_sub)
 
