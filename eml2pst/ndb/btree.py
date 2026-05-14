@@ -9,6 +9,7 @@ Each page is exactly 512 bytes. See [MS-PST] 2.2.2.7.
 
 import struct
 from ..crc import compute_crc
+from .block import block_signature
 
 PAGE_SIZE = 512
 PAGE_TRAILER_SIZE = 16
@@ -60,13 +61,16 @@ def pack_bt_entry(key, bid, ib):
     return struct.pack('<Q QQ', key, bid, ib)
 
 
-def build_btpage(entries, ptype, bid, c_level=0):
+def build_btpage(entries, ptype, bid, ib, c_level=0):
     """Build a single 512-byte B-tree page.
 
     Args:
         entries: List of packed entry bytes (must fit in one page).
         ptype: Page type (PTTYPE_NBT or PTTYPE_BBT).
         bid: Page BID.
+        ib: File offset where this page will be written. Required for
+            ComputeSig per [MS-PST] §2.2.2.7.1 — NBT/BBT page trailers
+            must carry wSig = ComputeSig(ib, bid).
         c_level: Tree depth (0 = leaf).
 
     Returns:
@@ -103,11 +107,15 @@ def build_btpage(entries, ptype, bid, c_level=0):
     # Compute CRC over the 496 bytes of page data
     crc = compute_crc(page_data)
 
-    # Build page trailer
+    # Build page trailer.
+    # Per [MS-PST] §2.2.2.7.1, NBT (0x81) / BBT (0x80) / DList (0x86) page
+    # trailers carry wSig = ComputeSig(ib, bid). AMap/PMap/FMap/FPMap pages
+    # use a literal 0, but those are emitted by their own modules (amap.py).
+    w_sig = block_signature(ib, bid)
     trailer = struct.pack('<BB H I Q',
                           ptype,  # ptype
                           ptype,  # ptypeRepeat
-                          0,  # wSig (always 0 for pages)
+                          w_sig,  # wSig = ComputeSig(ib, bid)
                           crc,  # dwCRC
                           bid)  # bid
 
@@ -143,7 +151,7 @@ def build_btree_pages(entries, ptype, alloc_bid_fn, alloc_offset_fn):
         # Single leaf page
         bid = alloc_bid_fn()
         offset = alloc_offset_fn(bid)
-        page = build_btpage(entries, ptype, bid, c_level=0)
+        page = build_btpage(entries, ptype, bid, ib=offset, c_level=0)
         return [(bid, offset, page)]
 
     # Multi-level B-tree: split into pages, build interior levels recursively
@@ -160,7 +168,7 @@ def build_btree_pages(entries, ptype, alloc_bid_fn, alloc_offset_fn):
             chunk = current_entries[i:i + max_per]
             bid = alloc_bid_fn()
             offset = alloc_offset_fn(bid)
-            page = build_btpage(chunk, ptype, bid, c_level=level)
+            page = build_btpage(chunk, ptype, bid, ib=offset, c_level=level)
             pages.append((bid, offset, page))
 
             first_key = struct.unpack('<Q', chunk[0][:8])[0]
@@ -173,7 +181,9 @@ def build_btree_pages(entries, ptype, alloc_bid_fn, alloc_offset_fn):
             # All interior entries fit in one root page
             root_bid = alloc_bid_fn()
             root_offset = alloc_offset_fn(root_bid)
-            root_page = build_btpage(next_level_entries, ptype, root_bid, c_level=level)
+            root_page = build_btpage(
+                next_level_entries, ptype, root_bid, ib=root_offset, c_level=level
+            )
             pages.append((root_bid, root_offset, root_page))
             return pages
 
